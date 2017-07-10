@@ -43,4 +43,11 @@ class Options:
 	self.parser.add_argument(
 	    "--config", type=str, default='config.ini', help="configuration plan")
 
-	
+	class VAction(argparse.Action):
+	    def __call__(self, parser, args, values, option_string=None):
+		if values is None: value = logging.INFO
+		try:
+		    values = int(values)
+		except ValueError:
+		    values = logging.INFO - values.count('v') * 10
+		setattr(args, self.dest, values)
