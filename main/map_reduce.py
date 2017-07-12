@@ -82,4 +82,94 @@ class RecordReader(io.IOBase):
     def close(self):
 	self.data.close()
 
+class StatDB:
+    def __init__(self, opts):
+	self.ddb = boto3.source('dynamodb', region_name = opts.region, endpoint_url = opts.ddb_endpoint)
+	self.table = self.ddb.Table(opts.ddb_table_name)
+	try:
+	    assert self.table.table_status == 'ACTIVE'
+	except botocore.exceptions.ClientError as e:
+	    if e.response['Error']['Code'] == 'ResourceNotFoundException':
+	        logger.warrning("table %s not found" % self.table.table_name)
+	    logger.debug("create table %s" % self.table.table_name)
+	    self.create_table()
 
+    def create_table():
+	self.table = self.ddb.create_table(
+	    TableName='taxi',
+	    KeySchema=[
+		{
+		    'AttributeName': 'color'
+		    'KeyType': 'HASH'
+		},
+		{
+		    'AttributeName': 'date'
+		    'KeyType': 'RANGE'
+		}
+	    ],
+	    AttributeDefinitions:[
+	        {
+		    'AttributeName': 'color'
+		    'AttributeType': 'S'
+		},
+		{
+		    'AttributeName': 'date'
+		    'AttributeType': 'N'
+		}
+	    ],
+	    ProvisionedThroughput={
+	        'ReadCapacityUnits': 2
+		'WriteCapacityUnits': 10
+	    }
+        )
+
+    def append(self, stat):
+	def add_values(counter, prefix):
+	    for key, count in counter.items():
+		values[':%s%s' % (prefix, key)] = count
+	
+	values = {}
+	values[':l'] = stat.total
+	values[':i'] = stat.invalid
+	add_values(stat.pickups, 'p')
+	add_values(stat.dropoffs, 'r')
+	add_values(stat.hour, 'h')
+	add_values(stat.trip_time, 't')
+	add_values(stat.distance, 's')
+	add_values(stat.fare, 'r')
+	add_values(stat.borough_pickups, 'k')
+	add_values(stat.boroug_dropoffs, 'o')
+
+	expr = ','.join(k[:1] + k for k in values.keys())
+	self.table.update_item(
+	    key = {'color': stat.color, 'date': stat.year * 100 + stat.month},
+	    UpdateExpression = 'add' + expr,
+	    ExpressionAttributeValues = values
+	)
+
+    def get(self, color, year, month):
+	def add_stat(counter, prefix):
+	    for key, value in values.items():
+		if key.startswith(prefix):
+		    counter[int(key[1:])] = int(val)
+	
+	stat = TaxiStat(color, year, month)
+	try:
+	    response = self.table.get_item(
+	        Key={
+		   'color': color
+		   'date' : year * 100 + month
+		}
+	    )
+	    value = response['Item']
+	    
+	    stat.total = values['l']
+            stat.invalid = values['i']
+            add_stat(stat.pickups,   'p')
+            add_stat(stat.dropoffs,  'r')
+            add_stat(stat.hour,      'h')
+            add_stat(stat.trip_time, 't')
+            add_stat(stat.distance,  's')
+            add_stat(stat.fare,      'f')
+            add_stat(stat.borough_pickups,  'k')
+            add_stat(stat.borough_dropoffs, 'o')
