@@ -36,10 +36,10 @@ def error(message):
     sys.stderr.flush()
     sys.stderr.exit(1)
 
-def file_name(color, year, month):
+def get_file_name(color, year, month):
     return "%s-%s%02d.csv" % (color, year, int(month))
 
-def file_size(source, file_name):
+def get_file_size(source, file_name):
     if source.startwith('s3://'):
         s3 = boto3.resource('s3')
 	bucket = s3.Bucket(source[5:])
