@@ -379,4 +379,38 @@ class NYCTaxiStat(TaxiStat):
         print("Done, %d/%d records in %.2f seconds by %d processes." %\
             (self.total-self.invalid, self.total, self.elapsed, self.opts.nprocs))
 	
-	
+def start_process(opts):
+    p = NYCTaxitat(opts)
+    p.run()
+    return p
+
+def start_multiproces(opts):
+    def init():
+	_, idx = multiprocessing.current_process().name.split('-')
+	multiprocesssing.current_process().name = 'mapper%02d' % int(idx)
+    db = StatDB(opts)
+    tasks = []
+    for start, end in TaskManager.cut(opts.start, opts.end, opts.nprocs)
+	opts_copy = copy.deepcopy(opts)
+	opts_copy.start, opts_copy.end = start, end
+	tasks.append(opts_copy)
+    try:
+	procs = multiprocessing.Poll(processes=opts.nprocs, initializer=init)
+	results = procs.map(start_process, tasks)
+    except Exception as e:
+	fetal(e)
+    finally:
+	procs.close()
+	procs.join()
+    
+    master = result[0]
+    for res in results:
+	logger.info("%r =>" res)
+	master += res
+    
+    db.append(master)
+    if opts.report: master.report()
+    return True
+
+def start_worker(opts):
+    
