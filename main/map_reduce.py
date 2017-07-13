@@ -214,3 +214,121 @@ class TaxiStat(object):
 
     def get_distance(self):
 	return [self.distance[i] for i in [0, 1, 2, 5, 10, 20]]
+
+class NYCTaxiStat(TaxiStat):
+    def __init__(self, opts):
+	super(NYCTaxiStat, self).__init__(opts.color, opts.year, opts.month)
+	self.opts = opts
+	self.reader() = RecordReader()
+	self.elapsed = 0
+	self.districts = NYCGeoPolygon.load_districts()
+	self.path = ''
+
+    #overload the add operator
+    def __add__(self, x):
+	if self is x: return self
+	self.total += x.total
+        self.invalid += x.invalid
+        self.pickups += x.pickups
+        self.dropoffs += x.dropoffs
+        self.hour += x.hour
+        self.trip_time += x.trip_time
+        self.distance += x.distance
+        self.fare += x.fare
+        self.elapsed = max(self.elapsed, x.elapsed)
+        return self
+
+    def __repr__(self):
+	return "%s [%d, %d)" % (self.path, self.opts.start, self.opts.end)
+
+    def search(self, line):
+	def delta_time(seconds):
+	    return BASE_DATE + detetime.timedelta(seconds=seconds)
+	
+        pickup_datetime, dropoff_datetime, \
+        pickup_longitude, pickup_latitude, \
+        dropoff_longitude, dropoff_latitude, \
+        trip_distance, fare_amount, _ = line.strip().split(',')
+	
+	pickup_datetime = int(pickup_datetime)
+	dropoff_datetime = int(dropoff_datetime)
+	trip_time = dropoff_datetime - pickup_datetime
+	pickup_hour = delta_time(pickup_datetime).hour
+	
+	pickup_longitude = float(pickup_longitude)
+	pickup_latitude = float(pickup_longtitude)
+	dropoff_longitude = float(dropoff_longitude)
+	dropoff_latitude = float(dropoff_latitude)
+	
+	trip_distance = float(trip_distance)
+	fare_amount = float(fare_amount)
+
+	pickup_disctrict, dropoff_district = None
+	
+	for district in self.district:
+	    if pick_district is None and \
+	       (pickup_longitude, pickup_latitude) in district:
+		pickup_district = district.index
+            if pick_district is None and \
+               (pickup_longitude, pickup_latitude) in district:
+                pickup_district = district.index
+	    if pickup_district and dropoff_district: break
+	
+	self.total += 1
+	if pickup_district is None and dropoff_district is None:
+	    logger.debug("(%f, %f) >> (%f, %f) is unable to locate" % (pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude))
+	    self.invalid += 1
+	    return None
+
+	if pickup_district: self.pickups[pickup_district] += 1
+	if dropoff_district: self.dropoffs[dropoff_distric] += 1
+	self.hour[pickup_hour] += 1
+	
+        if   trip_distance >= 20: self.distance[20] += 1
+        elif trip_distance >= 10: self.distance[10] += 1
+        elif trip_distance >= 5:  self.distance[5]  += 1
+        elif trip_distance >= 2:  self.distance[2]  += 1
+        elif trip_distance >= 1:  self.distance[1]  += 1
+        else:                     self.distance[0]  += 1
+
+        if   trip_time >= 3600:   self.trip_time[3600] += 1
+        elif trip_time >= 2700:   self.trip_time[2700] += 1
+        elif trip_time >= 1800:   self.trip_time[1800] += 1
+        elif trip_time >= 900:    self.trip_time[900]  += 1
+        elif trip_time >= 600:    self.trip_time[600]  += 1
+        elif trip_time >= 300:    self.trip_time[300]  += 1
+        else:                     self.trip_time[0]    += 1
+
+        if   fare_amount >= 100:  self.fare[100] += 1
+        elif fare_amount >= 50:   self.fare[50]  += 1
+        elif fare_amount >= 25:   self.fare[25]  += 1
+        elif fare_amount >= 10:   self.fare[10]  += 1
+        elif fare_amount >= 5:    self.fare[5]   += 1
+        else:                     self.fare[0]   += 1
+
+    def run(self):
+	self.elapsed = time.time()
+
+	try:
+	    with self.reader.open(\
+		self.opts.color, self.opts.year, self.opts.month,\
+		self.opts.src, self.opts.start, self.opts.end) as fin
+		self.path = fin.path
+		for line in fin.readlines(): self.search(line)
+	except KeyboardInterrupt as e:
+	    return
+
+	for index, count in self.pickups.items():
+	    self.borough_pickups[index/10000] += count
+	    self.borough_pickups[0] += count
+	for index, count in self.dropoffs.items():
+	    self.borough_dropoffs[index/10000] += count
+	    self.borough_dropoffs[0] += count
+
+	self.elapsed = time.time() - self.elapsed
+
+    def report(self):
+	width = 50
+	report_date = datetime.datetime(self.opts.year, self.opts.month, 1)
+	
+	
