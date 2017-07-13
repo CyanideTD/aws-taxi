@@ -330,5 +330,53 @@ class NYCTaxiStat(TaxiStat):
     def report(self):
 	width = 50
 	report_date = datetime.datetime(self.opts.year, self.opts.month, 1)
+        title = " NYC %s Cab, %s " %\
+            (self.opts.color.capitalize(), report_date.strftime('%B %Y'))
+        print(title.center(width, '='))
+
+        format_str = "%14s: %16s %16s"
+        print(format_str % ('Borough', 'Pickups', 'Dropoffs'))
+        for index, name in NYCBorough.BOROUGHS.items():
+            print(format_str % (name,
+                                self.borough_pickups[index],
+                                self.borough_dropoffs[index]))
+
+        print(" Pickup Time ".center(width, '-'))
+        format_str = "%14s: %33s"
+        for hour in range(24):
+            if hour in self.hour:
+                hour_str = '%d:00 ~ %d:59' % (hour, hour)
+                print(format_str % (hour_str, self.hour[hour]))
+        print(" Trip Distance (miles) ".center(width, '-'))
+        format_str = "%14s: %33s"
+        print(format_str % ('0 ~ 1',   self.distance[0]))
+        print(format_str % ('1 ~ 2',   self.distance[1]))
+        print(format_str % ('2 ~ 5',   self.distance[2]))
+        print(format_str % ('5 ~ 10',  self.distance[5]))
+        print(format_str % ('10 ~ 20', self.distance[10]))
+        print(format_str % ('> 20',    self.distance[20]))
+
+        print(" Trip Time (minutes) ".center(width, '-'))
+        format_str = "%14s: %33s"
+        print(format_str % ('0 ~ 5',   self.trip_time[0]))
+        print(format_str % ('5 ~ 10',  self.trip_time[300]))
+        print(format_str % ('10 ~ 15', self.trip_time[600]))
+        print(format_str % ('15 ~ 30', self.trip_time[900]))
+        print(format_str % ('30 ~ 45', self.trip_time[1800]))
+        print(format_str % ('45 ~ 60', self.trip_time[2700]))
+        print(format_str % ('> 60',    self.trip_time[3600]))
+
+        print(" Fare (dollars) ".center(width, '-'))
+        format_str = "%14s: %33s"
+        print(format_str % ('0 ~ 5',    self.fare[0]))
+        print(format_str % ('5 ~ 10',   self.fare[5]))
+        print(format_str % ('10 ~ 25',  self.fare[10]))
+        print(format_str % ('25 ~ 50',  self.fare[25]))
+        print(format_str % ('50 ~ 100', self.fare[50]))
+        print(format_str % ('> 100',    self.fare[100]))
+
+        print(''.center(width, '='))
+        print("Done, %d/%d records in %.2f seconds by %d processes." %\
+            (self.total-self.invalid, self.total, self.elapsed, self.opts.nprocs))
 	
 	
