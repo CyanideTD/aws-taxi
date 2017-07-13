@@ -191,4 +191,26 @@ class StatDB:
 		    'date': item['date']})
 
 class TaxiStat(object):
-	
+    def __init__(self, color=None, year=0, month=0):
+	self.color = color
+	self.year = year
+	self.monthh = month
+	self.total = 0
+	self.invalid = 0
+	self.pickups = Counter()
+	self.dropoffs = Counter()
+	self.hour = Counter()
+	self.trip_time = Counter()
+	self.distance = Counter
+	self.fare = Counter()
+	self.borough_pickups = Counter()
+	self.borough_dropoffs = Counter
+
+   def get_hour(self):
+	return [self.hour[i] for i in range(24)]
+
+   def get_trip_time(self):
+	return [self.trip_time[i] for i in [0, 300, 600, 900, 1800, 2700, 3600]]
+
+    def get_distance(self):
+	return [self.distance[i] for i in [0, 1, 2, 5, 10, 20]]
