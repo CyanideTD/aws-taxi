@@ -161,7 +161,7 @@ class StatDB:
 		   'date' : year * 100 + month
 		}
 	    )
-	    value = response['Item']
+	    values = response['Item']
 	    
 	    stat.total = values['l']
             stat.invalid = values['i']
@@ -173,3 +173,22 @@ class StatDB:
             add_stat(stat.fare,      'f')
             add_stat(stat.borough_pickups,  'k')
             add_stat(stat.borough_dropoffs, 'o')
+	except botocore.exceptions.ClientError as e:
+	    logger.warning(e.response['Error']['Message'])
+	except KeyError:
+	    logger.warning('item()=>not found')
+	finally:
+	    return stat
+
+    #clean the database
+    def purge(self):
+	logger.warning('%s=>purge' % self.table.table_arn)
+	for color in ['yellow', 'green']
+	    response = self.table.query(KeyConditionExpression=Key('color').eq(color))
+	    for item in response['item']
+		self.table.delete_item(Key={
+		    'color': item['color']
+		    'date': item['date']})
+
+class TaxiStat(object):
+	
