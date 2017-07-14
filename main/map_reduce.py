@@ -2,24 +2,39 @@
 
 from __future__ import print_function
 
+import argparse
 import logging
 import os.path
+import copy
+import datetime
+import decimal
+import io
+import multiprocessing
+import os.path
+import sys
+import boto3
+import botocore
+from collections import Counter
+from boto3.dynamodb.conditions import Key, Attr
+
 from common import *
+from geo import NYCBorough, NYCGeoPolygon
+
 
 logging.basicConfig()
-logger = logging.getLogger(os.path.filename(__file__))
+logger = logging.getLogger(os.path.basename(__file__))
 
 def parse_argv():
     o = Options();
     o.add('--src', metavar='URI', type=str, default='s3://cyanide-aws-nyc-taxi-data', help="data source directory")
-    o.add('s', '--start', metavar='NUM', type=int, default=0, help='the index of start point')
-    o.add('e', '--end', metarvar='NUM', type=int, default=4 * 1024 ** 3, help='the index of end point')
+    o.add('-s', '--start', metavar='NUM', type=int, default=0, help='the index of start point')
+    o.add('-e', '--end', metavar='NUM', type=int, default=4 * 1024 ** 3, help='the index of end point')
     o.add('-r', '--report', action="store_true", default = False, help='to print result on the screen')
-    o.add('-p', 'procs', type=int, metavar='NUM', default=1, help='number of concurrent processes')
+    o.add('-p', '--procs', type=int, metavar='NUM', default=1, help='number of concurrent processes')
     o.add('-w', '--worker', action='store_true', default=False, help="Worder mode")
     opts = o.load()
     
-    if opts.start < 0 or opts.start > opts.end
+    if opts.start < 0 or opts.start > opts.end:
 	fetal("invalid range [%d, %d]" % (opts.start, opts.end))
     
     opts.end = min(get_file_length(opts.src, opts.color, opts.year, opts.month), opts.end)
@@ -84,7 +99,7 @@ class RecordReader(io.IOBase):
 
 class StatDB:
     def __init__(self, opts):
-	self.ddb = boto3.source('dynamodb', region_name = opts.region, endpoint_url = opts.ddb_endpoint)
+	self.ddb = boto3.resource('dynamodb', region_name = opts.region, endpoint_url = opts.ddb_endpoint)
 	self.table = self.ddb.Table(opts.ddb_table_name)
 	try:
 	    assert self.table.table_status == 'ACTIVE'
@@ -99,26 +114,26 @@ class StatDB:
 	    TableName='taxi',
 	    KeySchema=[
 		{
-		    'AttributeName': 'color'
+		    'AttributeName': 'color',
 		    'KeyType': 'HASH'
 		},
 		{
-		    'AttributeName': 'date'
+		    'AttributeName': 'date',
 		    'KeyType': 'RANGE'
 		}
 	    ],
-	    AttributeDefinitions:[
+	    AttributeDefinitions=[
 	        {
-		    'AttributeName': 'color'
+		    'AttributeName': 'color',
 		    'AttributeType': 'S'
 		},
 		{
-		    'AttributeName': 'date'
+		    'AttributeName': 'date',
 		    'AttributeType': 'N'
 		}
 	    ],
 	    ProvisionedThroughput={
-	        'ReadCapacityUnits': 2
+	        'ReadCapacityUnits': 2,
 		'WriteCapacityUnits': 10
 	    }
         )
@@ -157,7 +172,7 @@ class StatDB:
 	try:
 	    response = self.table.get_item(
 	        Key={
-		   'color': color
+		   'color': color,
 		   'date' : year * 100 + month
 		}
 	    )
@@ -183,11 +198,11 @@ class StatDB:
     #clean the database
     def purge(self):
 	logger.warning('%s=>purge' % self.table.table_arn)
-	for color in ['yellow', 'green']
+	for color in ['yellow', 'green']:
 	    response = self.table.query(KeyConditionExpression=Key('color').eq(color))
-	    for item in response['item']
+	    for item in response['item']:
 		self.table.delete_item(Key={
-		    'color': item['color']
+		    'color': item['color'],
 		    'date': item['date']})
 
 class TaxiStat(object):
@@ -206,11 +221,11 @@ class TaxiStat(object):
 	self.borough_pickups = Counter()
 	self.borough_dropoffs = Counter
 
-   def get_hour(self):
-	return [self.hour[i] for i in range(24)]
+    def get_hour(self):
+        return [self.hour[i] for i in range(24)]
 
-   def get_trip_time(self):
-	return [self.trip_time[i] for i in [0, 300, 600, 900, 1800, 2700, 3600]]
+    def get_trip_time(self):
+        return [self.trip_time[i] for i in [0, 300, 600, 900, 1800, 2700, 3600]]
 
     def get_distance(self):
 	return [self.distance[i] for i in [0, 1, 2, 5, 10, 20]]
@@ -219,7 +234,7 @@ class NYCTaxiStat(TaxiStat):
     def __init__(self, opts):
 	super(NYCTaxiStat, self).__init__(opts.color, opts.year, opts.month)
 	self.opts = opts
-	self.reader() = RecordReader()
+	self.reader = RecordReader()
 	self.elapsed = 0
 	self.districts = NYCGeoPolygon.load_districts()
 	self.path = ''
@@ -312,7 +327,7 @@ class NYCTaxiStat(TaxiStat):
 	try:
 	    with self.reader.open(\
 		self.opts.color, self.opts.year, self.opts.month,\
-		self.opts.src, self.opts.start, self.opts.end) as fin
+		self.opts.src, self.opts.start, self.opts.end) as fin:
 		self.path = fin.path
 		for line in fin.readlines(): self.search(line)
 	except KeyboardInterrupt as e:
@@ -384,13 +399,13 @@ def start_process(opts):
     p.run()
     return p
 
-def start_multiproces(opts):
+def start_multiprocess(opts):
     def init():
 	_, idx = multiprocessing.current_process().name.split('-')
 	multiprocesssing.current_process().name = 'mapper%02d' % int(idx)
     db = StatDB(opts)
     tasks = []
-    for start, end in TaskManager.cut(opts.start, opts.end, opts.nprocs)
+    for start, end in TaskManager.cut(opts.start, opts.end, opts.nprocs):
 	opts_copy = copy.deepcopy(opts)
 	opts_copy.start, opts_copy.end = start, end
 	tasks.append(opts_copy)
@@ -405,12 +420,17 @@ def start_multiproces(opts):
     
     master = result[0]
     for res in results:
-	logger.info("%r =>" res)
+	logger.info("%r =>" %  res)
 	master += res
     
     db.append(master)
     if opts.report: master.report()
     return True
 
-def start_worker(opts):
+def main(opts):
+    if opts.worker: start_worker(opts)
+    else: start_multiprocess(opts)
+
+if __name__ == '__main__':
+    main(parse_argv())
     

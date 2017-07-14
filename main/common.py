@@ -11,7 +11,7 @@ import botocore
 import datetime
 
 __all__ = ['RECORD_LENGTH', 'MIN_DATE', 'MAX_DATE', 'BASE_DATE', \
-           'fatal', 'error', \
+           'fetal', 'error', \
            'get_file_name', 'get_file_size', 'get_file_length', \
            'Options']
 
@@ -37,10 +37,12 @@ def error(message):
     sys.stderr.exit(1)
 
 def get_file_name(color, year, month):
-    return "%s-%s%02d.csv" % (color, year, int(month))
+    return "%s-%s-%02d.csv" % (color, year, int(month))
 
-def get_file_size(source, file_name):
-    if source.startwith('s3://'):
+def get_file_size(source, color, year, month):
+    file_name = get_file_name(color, year, month)
+    print(file_name)
+    if source.startswith('s3://'):
         s3 = boto3.resource('s3')
 	bucket = s3.Bucket(source[5:])
 	try:
@@ -51,6 +53,9 @@ def get_file_size(source, file_name):
 		fetal("%s does not existis" % file_name)
     
     return bucket.Object(file_name).content_length
+
+def get_file_length(source, color, year, month):
+    return get_file_size(source, color, year, month) / RECORD_LENGTH
 
 class Options:
     def __init__(self):
@@ -107,3 +112,4 @@ if __name__ == '__main__':
     o = Options()
     o.load()
     print(o)
+    print(get_file_length('s3://cyanide-aws-nyc-taxi-data', 'yellow', 2016, 1))

@@ -5,6 +5,7 @@ from __future__ import print_function
 import json
 import sys
 import shapely.geometry
+from collections import OrderedDict
 
 class NYCBorough:
     BOROUGHS = OrderedDict({
@@ -28,15 +29,12 @@ class NYCBorough:
     def in_which(cls, longtitude, latitude):
 	min_distance = sys.maxint
 	min_borough = 1;
-	for idx, center in cls.CENTERS.items()
+	for idx, center in cls.CENTERS.items():
 	    d = center.distance(shapely.geometry.Point(longtitude, latitude))
 	    if min_distance > d:
 		min_distance = d
 		min_borough = idx
 	return idx
-
-    @classmethod
-
 
 class NYCGeoPolygon:
     NYC_DISTRICT_JSON = 'nyc_community_districts.geojson'
@@ -62,9 +60,9 @@ class NYCGeoPolygon:
     def load(cls, filename):
 	polygons = []
 	with open(filename, 'r') as f:
-	    for feature in json.load(f)['features']
+	    for feature in json.load(f)['features']:
 		properties = freature['properties']
-		if 'boro_name' in properties
+		if 'boro_name' in properties:
 		    name = properties['boro_name']
 		    index = int(properties['boro_code']) * 10000
 		else:
