@@ -9,6 +9,7 @@ import copy
 import datetime
 import decimal
 import io
+import time
 import multiprocessing
 import os.path
 import sys
@@ -16,7 +17,7 @@ import boto3
 import botocore
 from collections import Counter
 from boto3.dynamodb.conditions import Key, Attr
-
+from task import TaskManager
 from common import *
 from geo import NYCBorough, NYCGeoPolygon
 
@@ -30,7 +31,7 @@ def parse_argv():
     o.add('-s', '--start', metavar='NUM', type=int, default=0, help='the index of start point')
     o.add('-e', '--end', metavar='NUM', type=int, default=4 * 1024 ** 3, help='the index of end point')
     o.add('-r', '--report', action="store_true", default = False, help='to print result on the screen')
-    o.add('-p', '--procs', type=int, metavar='NUM', default=1, help='number of concurrent processes')
+    o.add('-p', '--procs', type=int, dest='nprocs', metavar='NUM', default=1, help='number of concurrent processes')
     o.add('-w', '--worker', action='store_true', default=False, help="Worder mode")
     opts = o.load()
     
@@ -60,13 +61,13 @@ class RecordReader(io.IOBase):
     def open(self, color, year, month, source, start, end):
 	self.start = start
 	self.end = end
-	self,skip = None
+	self.skip = None
 	filename = get_file_name(color, year, month)
 	
-	if source.startwwith('file://'):
+	if source.startswith('file://'):
 	    self.data_type = self.DATA_FILE
 	    directory = os.path.realpath(source[7:])
-	    path = "%s/%s" % (directory, file_name)
+	    path = "%s/%s" % (directory, filename)
 	    self.path = 'file://' + path
 	    self.data = open(path, 'r')
 	    self.data.seek(RECORD_LENGTH * self.start)
@@ -77,7 +78,6 @@ class RecordReader(io.IOBase):
 	    self.path = 's3://%s/%s' % (bucket.name, filename)
 	    bytes_range = 'bytes=%d-%d' % (self.start * RECORD_LENGTH, self.end * RECORD_LENGTH - 1)
 	    self.data = obj.get(Range=bytes_range)['Body']
-	    
 	logger.info("%s [%d, %d) => %s" % (self.path, self.start, self.end, self.proc))
 	return self
 
@@ -88,8 +88,10 @@ class RecordReader(io.IOBase):
 
     def readlines(self):
 	start = self.start
+	skip = 0
 	while start < self.end:
 	    line = self.readline()
+	    if skip < self.skip: skip += 1; continue
 	    start += 1
 	    if not line : break
 	    yield line
@@ -109,7 +111,7 @@ class StatDB:
 	    logger.debug("create table %s" % self.table.table_name)
 	    self.create_table()
 
-    def create_table():
+    def create_table(self):
 	self.table = self.ddb.create_table(
 	    TableName='taxi',
 	    KeySchema=[
@@ -153,20 +155,20 @@ class StatDB:
 	add_values(stat.distance, 's')
 	add_values(stat.fare, 'r')
 	add_values(stat.borough_pickups, 'k')
-	add_values(stat.boroug_dropoffs, 'o')
+	add_values(stat.borough_dropoffs, 'o')
 
-	expr = ','.join(k[:1] + k for k in values.keys())
-	self.table.update_item(
-	    key = {'color': stat.color, 'date': stat.year * 100 + stat.month},
-	    UpdateExpression = 'add' + expr,
-	    ExpressionAttributeValues = values
+	expr = ','.join([k[1:] + k for k in values.keys()])
+	self.table.update_item(\
+	    Key ={'color': stat.color, 'date': stat.year * 100 + stat.month},\
+	    UpdateExpression= 'add ' + expr,\
+	    ExpressionAttributeValues=values
 	)
 
     def get(self, color, year, month):
 	def add_stat(counter, prefix):
 	    for key, value in values.items():
 		if key.startswith(prefix):
-		    counter[int(key[1:])] = int(val)
+		    counter[int(key[1:])] = int(value)
 	
 	stat = TaxiStat(color, year, month)
 	try:
@@ -209,17 +211,17 @@ class TaxiStat(object):
     def __init__(self, color=None, year=0, month=0):
 	self.color = color
 	self.year = year
-	self.monthh = month
+	self.month = month
 	self.total = 0
 	self.invalid = 0
 	self.pickups = Counter()
 	self.dropoffs = Counter()
 	self.hour = Counter()
 	self.trip_time = Counter()
-	self.distance = Counter
+	self.distance = Counter()
 	self.fare = Counter()
 	self.borough_pickups = Counter()
-	self.borough_dropoffs = Counter
+	self.borough_dropoffs = Counter()
 
     def get_hour(self):
         return [self.hour[i] for i in range(24)]
@@ -258,37 +260,35 @@ class NYCTaxiStat(TaxiStat):
 
     def search(self, line):
 	def delta_time(seconds):
-	    return BASE_DATE + detetime.timedelta(seconds=seconds)
-	
+	    return BASE_DATE + datetime.timedelta(seconds=seconds)
+
         pickup_datetime, dropoff_datetime, \
         pickup_longitude, pickup_latitude, \
         dropoff_longitude, dropoff_latitude, \
         trip_distance, fare_amount, _ = line.strip().split(',')
-	
+
 	pickup_datetime = int(pickup_datetime)
 	dropoff_datetime = int(dropoff_datetime)
 	trip_time = dropoff_datetime - pickup_datetime
 	pickup_hour = delta_time(pickup_datetime).hour
 	
 	pickup_longitude = float(pickup_longitude)
-	pickup_latitude = float(pickup_longtitude)
+	pickup_latitude = float(pickup_latitude)
 	dropoff_longitude = float(dropoff_longitude)
 	dropoff_latitude = float(dropoff_latitude)
-	
 	trip_distance = float(trip_distance)
 	fare_amount = float(fare_amount)
+	pickup_district, dropoff_district = None, None
 
-	pickup_disctrict, dropoff_district = None
-	
-	for district in self.district:
-	    if pick_district is None and \
-	       (pickup_longitude, pickup_latitude) in district:
+	for district in self.districts:
+	    if pickup_district is None and \
+		 (pickup_longitude, pickup_latitude) in district:
 		pickup_district = district.index
-            if pick_district is None and \
-               (pickup_longitude, pickup_latitude) in district:
-                pickup_district = district.index
+            if dropoff_district is None and \
+		(dropoff_longitude, dropoff_latitude) in district:
+                dropoff_district = district.index
 	    if pickup_district and dropoff_district: break
-	
+
 	self.total += 1
 	if pickup_district is None and dropoff_district is None:
 	    logger.debug("(%f, %f) >> (%f, %f) is unable to locate" % (pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude))
@@ -296,16 +296,16 @@ class NYCTaxiStat(TaxiStat):
 	    return None
 
 	if pickup_district: self.pickups[pickup_district] += 1
-	if dropoff_district: self.dropoffs[dropoff_distric] += 1
+	if dropoff_district: self.dropoffs[dropoff_district] += 1
 	self.hour[pickup_hour] += 1
-	
+		
         if   trip_distance >= 20: self.distance[20] += 1
         elif trip_distance >= 10: self.distance[10] += 1
-        elif trip_distance >= 5:  self.distance[5]  += 1
-        elif trip_distance >= 2:  self.distance[2]  += 1
-        elif trip_distance >= 1:  self.distance[1]  += 1
-        else:                     self.distance[0]  += 1
-
+        elif trip_distance >= 5:  self.distance[5] += 1
+        elif trip_distance >= 2:  self.distance[2] += 1
+        elif trip_distance >= 1:  self.distance[1] += 1
+        else:                     self.distance[0] += 1
+	
         if   trip_time >= 3600:   self.trip_time[3600] += 1
         elif trip_time >= 2700:   self.trip_time[2700] += 1
         elif trip_time >= 1800:   self.trip_time[1800] += 1
@@ -323,23 +323,18 @@ class NYCTaxiStat(TaxiStat):
 
     def run(self):
 	self.elapsed = time.time()
-
 	try:
-	    with self.reader.open(\
-		self.opts.color, self.opts.year, self.opts.month,\
-		self.opts.src, self.opts.start, self.opts.end) as fin:
+	    with self.reader.open(self.opts.color, self.opts.year, self.opts.month, self.opts.src, self.opts.start, self.opts.end) as fin:
 		self.path = fin.path
 		for line in fin.readlines(): self.search(line)
 	except KeyboardInterrupt as e:
 	    return
-
 	for index, count in self.pickups.items():
 	    self.borough_pickups[index/10000] += count
 	    self.borough_pickups[0] += count
 	for index, count in self.dropoffs.items():
 	    self.borough_dropoffs[index/10000] += count
 	    self.borough_dropoffs[0] += count
-
 	self.elapsed = time.time() - self.elapsed
 
     def report(self):
@@ -395,41 +390,39 @@ class NYCTaxiStat(TaxiStat):
             (self.total-self.invalid, self.total, self.elapsed, self.opts.nprocs))
 	
 def start_process(opts):
-    p = NYCTaxitat(opts)
+    p = NYCTaxiStat(opts)
     p.run()
     return p
 
 def start_multiprocess(opts):
     def init():
 	_, idx = multiprocessing.current_process().name.split('-')
-	multiprocesssing.current_process().name = 'mapper%02d' % int(idx)
+	multiprocessing.current_process().name = 'mapper%02d' % int(idx)
     db = StatDB(opts)
     tasks = []
     for start, end in TaskManager.cut(opts.start, opts.end, opts.nprocs):
 	opts_copy = copy.deepcopy(opts)
 	opts_copy.start, opts_copy.end = start, end
 	tasks.append(opts_copy)
+
     try:
-	procs = multiprocessing.Poll(processes=opts.nprocs, initializer=init)
+	procs = multiprocessing.Pool(processes=opts.nprocs, initializer=init)
 	results = procs.map(start_process, tasks)
     except Exception as e:
 	fetal(e)
     finally:
 	procs.close()
-	procs.join()
-    
-    master = result[0]
+	procs.join() 
+    master = results[0]
     for res in results:
 	logger.info("%r =>" %  res)
 	master += res
-    
     db.append(master)
     if opts.report: master.report()
     return True
 
 def main(opts):
-    if opts.worker: start_worker(opts)
-    else: start_multiprocess(opts)
+    start_multiprocess(opts)
 
 if __name__ == '__main__':
     main(parse_argv())

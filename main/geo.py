@@ -1,4 +1,4 @@
-#!usr/bin/env python
+#!/usr/bin/env python
 
 from __future__ import print_function
 
@@ -37,20 +37,17 @@ class NYCBorough:
 	return idx
 
 class NYCGeoPolygon:
-    NYC_DISTRICT_JSON = 'nyc_community_districts.geojson'
-    NYC_BOROUGHS_JSON = 'nyc_boroughs.geojson'
-
     def __init__(self, index, name, polygon):
 	self.index = index
 	self.name = name
 	self.polygon = shapely.geometry.shape(polygon)
 	self.region = index / 10000
 
-    def __contains__(self, point):
+    def __contains__(self, point):	
 	return self.polygon.contains(shapely.geometry.Point(point))
 
     def __str__(self):
-	return '{index}: name'.format(**self.__dict__)
+	return '{index}: {name}'.format(**self.__dict__)
 
     def xy(self):
 	x, y = self.polygon.exterior.coords.xy
@@ -61,7 +58,7 @@ class NYCGeoPolygon:
 	polygons = []
 	with open(filename, 'r') as f:
 	    for feature in json.load(f)['features']:
-		properties = freature['properties']
+		properties = feature['properties']
 		if 'boro_name' in properties:
 		    name = properties['boro_name']
 		    index = int(properties['boro_code']) * 10000
@@ -72,8 +69,8 @@ class NYCGeoPolygon:
 		if geometry['type'].lower() == 'polygon':
 		    raise NotImplementedError
 		for i, coords in enumerate(geometry['coordinates']):
-		    polygon = {'type': 'Polygon', 'coordinate': coords}
-		    polygons.append(NYCGeoPolygon(index + i + 1, name, polygn))
+		    polygon = {'type': 'Polygon', 'coordinates': coords}
+		    polygons.append(NYCGeoPolygon(index + i + 1, name, polygon))
 		
 	def shift_borough(district):
 	    if district.region == 2: return 4
@@ -83,9 +80,12 @@ class NYCGeoPolygon:
 	return polygons
     
     @classmethod
-    def load_district(cls):
-	return cls.load(NYC_DISTRICT_JSON)
+    def load_districts(cls):
+	return cls.load('nyc_community_districts.geojson')
 
     @classmethod
     def load_boroughs(cls):
-	return cls.load(NYC_BOROUGHS_JSON)
+	return cls.load('nyc_boroughs.geojson')
+
+if __name__ == '__main__':
+    p = NYCGeoPolygon.load_districts()

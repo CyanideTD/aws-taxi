@@ -29,12 +29,11 @@ BASE_DATE = datetime.datetime(2009, 1, 1)
 def fetal(message):
     sys.stderr.write('fetal: %s\n' % message)
     sys.stderr.flush()
-    sys.stderr.exit(1)
+    sys.exit(1)
 
 def error(message):
     sys.stderr.write("error: %s\n" % message)
     sys.stderr.flush()
-    sys.stderr.exit(1)
 
 def get_file_name(color, year, month):
     return "%s-%s-%02d.csv" % (color, year, int(month))
@@ -93,20 +92,20 @@ class Options:
 	    '-v', nargs='?', action=VAction, metavar='vv...', dest='verbose', default=logging.WARNING, help='level of verbose')
 
     def add(self, *args, **kwargs):
-	self.parser.add_argument(*args, **kwargs)
+	    self.parser.add_argument(*args, **kwargs)
 
     def load(self):
-	self.opts = self.parser.parse_args()
-	p = ConfigParser.SafeConfigParser()
-	p.read(self.opts.config)
-	profile = 'debug' if self.opts.debug else 'default'
-	for key, value in p.items(profile):
-	    setattr(self.opts, key, value)
+	    self.opts = self.parser.parse_args()
+	    p = ConfigParser.SafeConfigParser()
+	    p.read(self.opts.config)
+	    profile = 'debug' if self.opts.debug else 'default'
+	    for key, value in p.items(profile):
+	        setattr(self.opts, key, value)
 	
-	return self.opts
+	    return self.opts
 
     def __str__(self):
-	return '\n'.join(['%16s: %s' % (attr, value) for attr, value in self.opts.__dict__.iteritems()])
+	    return '\n'.join(['%16s: %s' % (attr, value) for attr, value in self.opts.__dict__.iteritems()])
 
 if __name__ == '__main__':
     o = Options()

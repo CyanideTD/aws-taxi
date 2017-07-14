@@ -5,4 +5,5 @@ class TaskManager:
     def cut(clas, start, end, N, nth=None):
 	parts = range(start, end + 1, (end -start) / N)
 	parts[-1] = end + 1
-	if nth is None: return [[parts[i], parts[i+1]]]
+	if nth is None: return [[parts[i], parts[i+1]] for i in range(N)]
+	return [parts[nth], parths[nth + 1]]
