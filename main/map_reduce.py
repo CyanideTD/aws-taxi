@@ -421,6 +421,27 @@ def start_multiprocess(opts):
     if opts.report: master.report()
     return True
 
+def start_worker(opts):
+    task_manager = TaskManager(opts)
+    if not opts.debug: opts.nprocs = nultiprocessing.cpu_count()
+    nth_task = 0
+
+    while True:
+	task = task_manager.retrive_task(delete=False)
+	if task:
+	    logger.info('task %d => start' % nth_task)
+	    opts.color = task.color
+	    opts.year = task.year
+	    opts.start = task.start
+	    opts.end = task.end
+	    if start_multiprocess(opts):
+		logger.info('task %r => succeeded' % task)
+		task_manager.delete_task(task)
+	    nth_task += 1
+	else:
+	    logger.info("no task, wait for %d seconds" % opts.sleep)
+	    time.sleep(opts.sleep)
+
 def main(opts):
     start_multiprocess(opts)
 

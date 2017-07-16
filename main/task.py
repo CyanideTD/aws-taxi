@@ -2,12 +2,14 @@
 
 from common import *
 import logging
+import boto3
+import botocore
 
 logging.basicConfig()
 
 def parse_argv():
     o = Options()
-    o.add('--create_tasks', type=int, dest='create_tasks', metavar='NUM' default=-1, help='create tasks')
+    o.add('--create_tasks', type=int, dest='create_tasks', metavar='NUM', default=-1, help='create tasks')
     o.add('--receive_tasks', type=int, dest='receive_tasks', metavar='NUM', default=0, help='receive tasks')
     o.add('--delete_after_receive', dest='delete_reveived', action='store_true', default=False, help='delete task after successfully received')
     o.add('--count_tasks', dest='count_tasks', action="store_true", default=False, help='count tasks')
@@ -32,7 +34,7 @@ class Task:
             (self.__dict__)
 
     def __repr__(self):
-	return "%(color)s,%(year)d,%(month)d,%(start)d,%(end)d,%(timeout)d" % \
+	return "%(color)s:%(year)s:%(month)s:[%(start)d,%(end)d),%(timeout)d" % \
             (self.__dict__)
     
     def encode(self):
@@ -86,7 +88,8 @@ class TaskManager:
 	for record_range in self.cut(0, n_records, n_tasks):
 	    task = Task(color, year, month, record_range[0], record_range[1], int(self.opts.task_timeout))
 	    self.logger.debug('%r => create' % task)
-	    self.queue.send_message(MessageBody=task.encode())
+	    if not self.opts.dryrun:
+	        self.queue.send_message(MessageBody=task.encode())
 
     def retrieve_task(self, delete=False, **kwargs):
 	try:
@@ -131,6 +134,6 @@ class TaskManager:
 	for i in range(self.opts.receive_tasks):
 	    print('received %r' % self.retrieve_task(self.opts.delete_received))
 
-if __name__ == '__main__'
-    tm = TaskManger(parse_argv())
+if __name__ == '__main__':
+    tm = TaskManager(parse_argv())
     tm.run()
