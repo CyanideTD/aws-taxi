@@ -443,7 +443,8 @@ def start_worker(opts):
 	    time.sleep(opts.sleep)
 
 def main(opts):
-    start_multiprocess(opts)
+    if opts.worker: start_worker(opts)
+    else: start_multiprocess(opts)
 
 if __name__ == '__main__':
     main(parse_argv())
