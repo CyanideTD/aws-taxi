@@ -77,7 +77,7 @@ class Options:
 	    '--dryrun', default=False, action='store_true', help="dry run")
 
 	self.parser.add_argument(
-	    '--debug', action='store_true', default=False, help='debug mode')
+	   '-d', '--debug', action='store_true', default=False, help='debug mode')
 	
 	class VAction(argparse.Action):
 	    def __call__(self, parser, args, values, option_string=None):

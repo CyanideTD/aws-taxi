@@ -17,7 +17,7 @@ import boto3
 import botocore
 from collections import Counter
 from boto3.dynamodb.conditions import Key, Attr
-from task import TaskManager
+from tasks import TaskManager
 from common import *
 from geo import NYCBorough, NYCGeoPolygon
 
@@ -231,6 +231,8 @@ class TaxiStat(object):
 
     def get_distance(self):
 	return [self.distance[i] for i in [0, 1, 2, 5, 10, 20]]
+    def get_fare(self):
+	return [self.fare[i] for i in [0, 5, 10, 25, 50, 100]]
 
 class NYCTaxiStat(TaxiStat):
     def __init__(self, opts):
@@ -427,7 +429,7 @@ def start_worker(opts):
     nth_task = 0
 
     while True:
-	task = task_manager.retrive_task(delete=False)
+	task = task_manager.retrieve_task(delete=False)
 	if task:
 	    logger.info('task %d => start' % nth_task)
 	    opts.color = task.color

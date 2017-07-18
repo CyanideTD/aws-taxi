@@ -93,7 +93,7 @@ class TaskManager:
 
     def retrieve_task(self, delete=False, **kwargs):
 	try:
-	    message = self.queue.receive_messages(MaxNumberOfMessage=1, WaitTimeSeconds=1)[0]
+	    message = self.queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=1)[0]
 	except IndexError as e:
 	    self.logger.debug('no more task')
 
@@ -110,7 +110,7 @@ class TaskManager:
 
     def delete_task(self, task):
 	self.logger.debug('%r (%s) => delete' % (task, task.sqs_id))
-	self.queue.delete_message(Entries=[{'Id': task.sqs_id, 'ReceiptHandle': task.sqs_handle}])
+	self.queue.delete_messages(Entries=[{'Id': task.sqs_id, 'ReceiptHandle': task.sqs_handle}])
 	
     def count_tasks(self):
 	self.queue.reload()

@@ -24,7 +24,7 @@ from bokeh.io import curdoc
 
 from common import *
 from geo import NYCBorough, NYCGeoPolygon
-from mapred import StatDB
+from map_reduce import StatDB
 from tasks import TaskManager
 
 logging.basicConfig()
@@ -57,7 +57,7 @@ class InteractivePlot:
 
         self.selected_type = 'Pickups'
         self.selected_borough = 0
-        self.selected_color = 'green'
+        self.selected_color = 'yellow'
         self.selected_year = 2016
         self.selected_month = 1
         self.refresh_ticks = 0
@@ -283,7 +283,7 @@ class InteractivePlot:
 
         def on_select():
             BOROUGHS_CODE = {v: k for k, v in NYCBorough.BOROUGHS.items()}
-            self.selected_color = 'green' if color.active == 1 else 'yellow'
+            self.selected_color = 'yellow' if color.active == 1 else 'green'
             pickup.label = 'Pickups' if pickup.active else 'Dropoffs'
             self.selected_type = pickup.label
             self.selected_borough = BOROUGHS_CODE[borough.value]
@@ -323,7 +323,7 @@ class InteractivePlot:
         borough.on_change('value', lambda attr, old, new: on_select())
 
         year = Select(title="Year:", value=str(self.selected_year),
-            options=[str(y) for y in range(MIN_DATE['green'].year, MAX_DATE['green'].year+1)])
+            options=[str(y) for y in range(MIN_DATE['yellow'].year, MAX_DATE['yellow'].year+1)])
         year.on_change('value', lambda attr, old, new: on_select())
 
         month = Select(title="Month:", value=str(self.selected_month),
