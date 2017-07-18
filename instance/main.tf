@@ -1,3 +1,4 @@
+# Terraform Configurations
 
 variable "aws" {
     type = "map"
@@ -27,7 +28,7 @@ variable "terraform" {
     }
 }
 
-variable "tage=s" {
+variable "tags" {
     type = "map"
     default = {
 	environment = ""
@@ -55,13 +56,8 @@ variable "mapper" {
 	ebs_device_name = ""
 	ebs_volume_size = ""
 	ebs_volume_type = ""
-	evs_volume_deletion = ""
+	ebs_volume_deletion = ""
 	use_as_ecs = ""
-	use_asg = ""
-	asg_instance_types       = ""
-        asg_instance_counts      = ""
-        asg_termination_policies = ""
-
     }
 }
 
@@ -72,6 +68,10 @@ variable "docker" {
         instance_type = ""
         count         = 0
     }
+}
+
+provider "aws" {
+    region = "${var.aws["region"]}"
 }
 
 ### Security Group ###
@@ -175,7 +175,7 @@ resource "aws_instance" "webserver" {
     subnet_id			= "${var.aws["subnet_id"]}"
     key_name			= "${var.aws["key_name"]}"
     monitoring			= "${var.aws["monitoring"]}"
-    associate_public_ip_address = "${var.aws["asssociate_public_ip_address"]}"
+    associate_public_ip_address = "${var.aws["associate_public_ip_address"]}"
     iam_instance_profile	= "${var.aws["iam_instance_profile"]}"
     instance_type		= "${var.webserver["instance_type"]}"
     count			= "${var.webserver["count"]}"
@@ -205,7 +205,7 @@ resource "aws_instance" "mapper" {
     iam_instance_profile        = "${var.aws["iam_instance_profile"]}"
 
     instance_type               = "${var.mapper["instance_type"]}"
-    count                       = "${var.aws["use_spot_instances"] ? 0 : var.mapper["count"]}"
+    count                       = "${var.mapper["count"]}"
 
     #ebs_block_device {
     #    device_name = "${var.mapper["ebs_device_name"]}"
@@ -234,7 +234,7 @@ resource "aws_instance" "docker" {
     iam_instance_profile        = "${var.aws["iam_instance_profile"]}"
 
     instance_type               = "${var.docker["instance_type"]}"
-    count                       = "${var.aws["use_spot_instances"] ? 0 : var.docker["count"]}"
+    count                       = "${var.docker["count"]}"
 
     tags {
         Environment = "${var.tags["environment"]}"
@@ -273,7 +273,7 @@ resource "aws_alb" "web" {
     name = "webserver-alb-${var.tags["environment"]}"
     internal = false
     subnets = ["${split(",", var.aws["subnet_ids"])}"]
-    security_groups = ["${aws_security_group.default.id}", "${aws_security_group.weserver.id}"]
+    security_groups = ["${aws_security_group.default.id}", "${aws_security_group.webserver.id}"]
     enable_deletion_protection = false
     count = "${(var.aws["use_load_balancer"] && var.webserver["count"] > 0) ? 1 : 0}"
     
@@ -357,7 +357,7 @@ resource "aws_route53_record" "web_elb" {
 
 resource "aws_route53_record" "mapper" {
     zone_id = "${var.aws["route53_zone"]}"
-    count   = "${var.aws["use_spot_instances"] ? 0 : var.mapper["count"]}"
+    count   = "${var.mapper["count"]}"
     name    = "${element(aws_instance.mapper.*.tags.Name, count.index)}"
     type    = "A"
     ttl     = "300"
@@ -366,7 +366,7 @@ resource "aws_route53_record" "mapper" {
 
 resource "aws_route53_record" "docker" {
     zone_id = "${var.aws["route53_zone"]}"
-    count   = "${var.aws["use_spot_instances"] ? 0 : var.docker["count"]}"
+    count   = "${var.docker["count"]}"
     name    = "${element(aws_instance.docker.*.tags.Name, count.index)}"
     type    = "A"
     ttl     = "300"
@@ -379,10 +379,10 @@ output "webservers"  {
 }
 
 output "mappers" {
-    value = ["${aws_route53_record.mapper.*.fqdn}", "${aws_route53_record.mapper_spot.*.fqdn}"]
+    value = ["${aws_route53_record.mapper.*.fqdn}"]
 }
 
 output "dockers" {
-    value = ["${aws_route53_record.docker.*.fqdn}", "${aws_route53_record.docker_spot.*.fqdn}"]
+    value = ["${aws_route53_record.docker.*.fqdn}"]
 }
 
