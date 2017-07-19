@@ -25,6 +25,10 @@ from geo import NYCBorough, NYCGeoPolygon
 logging.basicConfig()
 logger = logging.getLogger(os.path.basename(__file__))
 
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+
 def parse_argv():
     o = Options();
     o.add('--src', metavar='URI', type=str, default='s3://cyanide-aws-nyc-taxi-data', help="data source directory")
