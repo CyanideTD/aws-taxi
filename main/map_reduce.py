@@ -202,7 +202,7 @@ class StatDB:
 	logger.warning('%s=>purge' % self.table.table_arn)
 	for color in ['yellow', 'green']:
 	    response = self.table.query(KeyConditionExpression=Key('color').eq(color))
-	    for item in response['item']:
+	    for item in response['Items']:
 		self.table.delete_item(Key={
 		    'color': item['color'],
 		    'date': item['date']})

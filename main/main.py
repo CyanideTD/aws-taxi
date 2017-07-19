@@ -283,7 +283,7 @@ class InteractivePlot:
 
         def on_select():
             BOROUGHS_CODE = {v: k for k, v in NYCBorough.BOROUGHS.items()}
-            self.selected_color = 'yellow' if color.active == 1 else 'green'
+            self.selected_color = 'green' if color.active == 1 else 'yellow'
             pickup.label = 'Pickups' if pickup.active else 'Dropoffs'
             self.selected_type = pickup.label
             self.selected_borough = BOROUGHS_CODE[borough.value]

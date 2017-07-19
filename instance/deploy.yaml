@@ -93,9 +93,9 @@
     become: yes
 
   - name: start bokeh
-    shell: "bokeh serve main --host web.cyanidesd.com:5006 &>bokeh-`date +%Y-%m-%d-%H-%M-%S`.log &"
+    shell: "bokeh serve ../main --allow-websocket-origin web.cyanidesd.com:5006"
     args:
-      chdir: "{{ repo_home }}"
+      chdir: "{{ repo_home }}/main"
     async: 10
     poll: 0
 
