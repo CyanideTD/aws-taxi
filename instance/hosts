@@ -1,0 +1,7 @@
+[dockers]
+docker0.cyanidesd.com
+
+[mappers]
+
+[webservers]
+webserver0.cyanidesd.com

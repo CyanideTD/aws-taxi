@@ -1,0 +1,8 @@
+---
+deploy_user: ec2-user
+deploy_key: delpoy                 
+deploy_home: "/home/{{ deploy_user }}"
+deploy_bucket: cyanide-us-west-2          
+repo_url: git@github.com:CyanideTD/aws-taxi.git
+repo_home: "{{ deploy_home }}/aws"
+

@@ -2,7 +2,7 @@
 aws = {
   region         = "us-west-2"
   key_name       = "CyanideTD"                       
-  ami            = "ami-d75444ae"                      
+  ami            = "ami-44f2ec3d"                      
   subnet_id      = "subnet-ade9c3e4"
   subnet_ids     = "subnet-ade9c3e4,subnet-d7d9f89e"
   route53_zone   = "ZF740RJTWBCSE"
@@ -18,13 +18,13 @@ aws = {
 terraform = {
   backend = "s3"
   region  = "us-west-2"
-  bucket  = "cyanide-us-west-2" # TODO
+  bucket  = "cyanide-us-west-2"
 }
 
 # Tags
 tags = {
   environment = "taxi"
-  user        = "cyanide"       # TODO
+  user        = "cyanide"
 }
 
 # Web Server Settings
@@ -51,8 +51,8 @@ mapper = {
 
 # Docker Settings
 docker = {
-  ami                  = "ami-12b23172"
+  ami                  = "ami-48f5eb31"
   instance_type        = "t2.micro"
-  count                = "0"
+  count                = "1"
 }
 
