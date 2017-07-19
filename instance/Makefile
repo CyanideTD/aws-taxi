@@ -14,6 +14,7 @@ help:
 	@echo "  ami		build customized AMI"
 	@echo "  plan		create infrastructure plan"
 	@echo "  apply		apply infrastructure plan"
+	@echo "  deploy         deploy ansible playbook"
 .PHONY: ami
 ami:
 	./build_ami.sh
@@ -26,3 +27,8 @@ plan:
 apply:
 	terraform apply -var-file=cluster.tfvars
 	terraform output -json | ./json2ini.py --keywords webservers,mappers,reducers,dockers -o hosts
+
+.PHONY: deploy
+deploy:
+	@echo "Deploying Ansible playbook"
+	ansible-playbook deploy.yaml
