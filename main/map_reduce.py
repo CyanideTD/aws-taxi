@@ -107,7 +107,7 @@ class StatDB:
 	    assert self.table.table_status == 'ACTIVE'
 	except botocore.exceptions.ClientError as e:
 	    if e.response['Error']['Code'] == 'ResourceNotFoundException':
-	        logger.warrning("table %s not found" % self.table.table_name)
+	        logger.warning("table %s not found" % self.table.table_name)
 	    logger.debug("create table %s" % self.table.table_name)
 	    self.create_table()
 

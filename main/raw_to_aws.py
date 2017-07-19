@@ -1,6 +1,24 @@
 #!/usr/bin/env python
 
-from __futrue__ import print_function
+from __future__ import print_function
+
+import argparse
+import calendar
+import copy
+import datetime
+import dateutil
+import fileinput
+import os.path
+import re
+import sys
+import io
+import urllib2
+import multiprocessing
+
+import bytebuffer
+import botocore
+import boto3
+
 
 MIN_DATE = {
     'yellow': datetime.datetime(2009, 1, 1),
