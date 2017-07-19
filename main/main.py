@@ -10,7 +10,7 @@ import logging
 import os.path
 import time
 
-import raw2aws
+import raw_to_aws
 
 from bokeh.plotting import figure
 from bokeh.palettes import Viridis6 as palette

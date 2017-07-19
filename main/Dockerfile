@@ -9,5 +9,5 @@ RUN `command -v pip` install -U boto boto3 awscli bokeh paramiko bytebuffer pand
 
 RUN ["mkdir", "-p", "/tmp/taxi"]
 COPY ./* /tmp/taxi/
-CMD ["/tmp/taxi/mapred.py", "-w", "-vv"]
+CMD ["/tmp/taxi/map_reduce.py", "-w", "-vv"]
 

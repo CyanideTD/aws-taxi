@@ -12,6 +12,7 @@ read_input = $(shell read -p $(1) REPLY; \
 all: help
 help:
 	@echo "  debug  debugging run"
+	@echo "  build  build Docker image"
 
 
 .PHONY: debug
@@ -20,3 +21,7 @@ debug:
 	cd ../scripts/ && ./run_ddb.sh start
 	@echo "Debugging entire website..."
 	BOKEH_LOG_LEVEL=debug bokeh serve ../main --args --debug -vv
+
+.PHONY: build
+build:
+	${DK} build -t main .

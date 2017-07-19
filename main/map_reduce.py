@@ -425,7 +425,7 @@ def start_multiprocess(opts):
 
 def start_worker(opts):
     task_manager = TaskManager(opts)
-    if not opts.debug: opts.nprocs = nultiprocessing.cpu_count()
+    if not opts.debug: opts.nprocs = multiprocessing.cpu_count()
     nth_task = 0
 
     while True:
