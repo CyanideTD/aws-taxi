@@ -157,7 +157,7 @@ class StatDB:
 	add_values(stat.hour, 'h')
 	add_values(stat.trip_time, 't')
 	add_values(stat.distance, 's')
-	add_values(stat.fare, 'r')
+	add_values(stat.fare, 'f')
 	add_values(stat.borough_pickups, 'k')
 	add_values(stat.borough_dropoffs, 'o')
 
